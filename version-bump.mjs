@@ -8,12 +8,6 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-/**
- * Prompts the user with a question and returns the answer.
- * @param {string} question - The question to ask.
- * @param {string} defaultAnswer - The default answer if user just presses Enter.
- * @returns {Promise<string>} A promise that resolves with the user's answer.
- */
 const askQuestion = (question, defaultAnswer = 'yes') => {
     return new Promise((resolve) => {
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
@@ -22,11 +16,6 @@ const askQuestion = (question, defaultAnswer = 'yes') => {
     });
 };
 
-/**
- * Reads a JSON file and returns its parsed content.
- * @param {string} filename - The name of the file to read.
- * @returns {Object} The parsed JSON content.
- */
 const readJsonFile = (filename) => {
     try {
         return JSON.parse(readFileSync(filename, 'utf8'));
@@ -36,11 +25,6 @@ const readJsonFile = (filename) => {
     }
 };
 
-/**
- * Writes data to a JSON file.
- * @param {string} filename - The name of the file to write.
- * @param {Object} data - The data to write.
- */
 const writeJsonFile = (filename, data) => {
     try {
         writeFileSync(filename, JSON.stringify(data, null, '\t'));
@@ -53,34 +37,23 @@ const writeJsonFile = (filename, data) => {
 const targetVersion = process.env.npm_package_version;
 const filesToUpdate = ['manifest.json', 'versions.json'];
 
-/**
- * Updates the manifest and versions files with the new version.
- */
 const updateVersionFiles = () => {
-    // Update manifest.json
     const manifest = readJsonFile('manifest.json');
     const { minAppVersion } = manifest;
     manifest.version = targetVersion;
     writeJsonFile('manifest.json', manifest);
 
-    // Update versions.json
     const versions = readJsonFile('versions.json');
     versions[targetVersion] = minAppVersion;
     writeJsonFile('versions.json', versions);
 };
 
-/**
- * Displays the changes to be committed.
- */
 const showChanges = async () => {
     const status = await git.status();
     console.log('Changes to be committed:');
     console.log(status.files.map(file => `  ${file.path}`).join('\n'));
 };
 
-/**
- * Commits changes without creating a new tag.
- */
 const commitChanges = async () => {
     await showChanges();
 
@@ -102,13 +75,27 @@ const commitChanges = async () => {
     }
 };
 
-/**
- * Main function to run the script.
- */
+const tagCommit = async () => {
+    const tagConfirmation = await askQuestion('Do you want to tag this commit?');
+    if (tagConfirmation !== 'yes') {
+        console.log('Skipping tag creation.');
+        return;
+    }
+
+    try {
+        await git.addTag(targetVersion);
+        console.log(`Successfully created tag ${targetVersion}`);
+    } catch (error) {
+        console.error('Failed to create git tag:', error);
+        process.exit(1);
+    }
+};
+
 const main = async () => {
     try {
         updateVersionFiles();
         await commitChanges();
+        await tagCommit();
     } catch (error) {
         console.error('An error occurred:', error);
         process.exit(1);
