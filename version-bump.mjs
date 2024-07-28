@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 import simpleGit from 'simple-git';
 import readline from 'readline';
+import fetch from 'node-fetch';
 
 const git = simpleGit();
 const rl = readline.createInterface({
@@ -75,10 +76,49 @@ const commitChanges = async () => {
     }
 };
 
+const createGitHubRelease = async () => {
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+        console.error('GITHUB_TOKEN environment variable is not set. Skipping GitHub release creation.');
+        return;
+    }
+
+    const repoUrl = await git.remote(['get-url', 'origin']);
+    const [, owner, repo] = repoUrl.match(/github\.com[:/](.+)\/(.+)\.git$/);
+
+    const releaseData = {
+        tag_name: targetVersion,
+        name: `Release ${targetVersion}`,
+        body: `Release of version ${targetVersion}`,
+        draft: false,
+        prerelease: false
+    };
+
+    try {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `token ${githubToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(releaseData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`GitHub API responded with ${response.status}: ${response.statusText}`);
+        }
+
+        console.log(`Successfully created GitHub release for ${targetVersion}`);
+    } catch (error) {
+        console.error('Failed to create GitHub release:', error);
+    }
+};
+
 const main = async () => {
     try {
         updateVersionFiles();
         await commitChanges();
+        await createGitHubRelease();
     } catch (error) {
         console.error('An error occurred:', error);
         process.exit(1);
