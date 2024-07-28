@@ -1,57 +1,41 @@
 import { readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import { createInterface } from "readline";
-import { simpleGit } from "simple-git";
+import simpleGit from 'simple-git';
+import readline from 'readline';
 
 const git = simpleGit();
-
-const newVersion = process.argv[2];
-
-if (!newVersion) {
-    console.error('Please provide the new version as an argument');
-    process.exit(1);
-}
-
-const filesToUpdate = [
-    'manifest.json',
-    'package-lock.json',
-    'package.json',
-    'versions.json'
-];
-
-filesToUpdate.forEach(file => {
-    const filePath = join(__dirname, file);
-    const fileContent = JSON.parse(readFileSync(filePath, 'utf8'));
-
-    if (file === 'versions.json') {
-        const lastVersion = Object.keys(fileContent).pop();
-        fileContent[lastVersion] = "0.15.0";
-        fileContent[newVersion] = "0.15.0";
-    } else {
-        fileContent.version = newVersion;
-    }
-
-    writeFileSync(filePath, JSON.stringify(fileContent, null, '\t'), 'utf8');
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
 });
 
-const askQuestion = (query) => {
-    const rl = createInterface({
-        input: process.stdin,
-        output: process.stdout
+const askQuestion = (question) => {
+    return new Promise((resolve) => {
+        rl.question(question, (answer) => {
+            resolve(answer);
+        });
     });
+};
 
-    return new Promise(resolve => rl.question(query, ans => {
-        rl.close();
-        resolve(ans);
-    }));
-}
+const targetVersion = process.env.npm_package_version;
+
+// read minAppVersion from manifest.json and bump version to target version
+let manifest = JSON.parse(readFileSync("manifest.json", "utf8"));
+const { minAppVersion } = manifest;
+manifest.version = targetVersion;
+writeFileSync("manifest.json", JSON.stringify(manifest, null, "\t"));
+
+// update versions.json with target version and minAppVersion from manifest.json
+let versions = JSON.parse(readFileSync("versions.json", "utf8"));
+versions[targetVersion] = minAppVersion;
+writeFileSync("versions.json", JSON.stringify(versions, null, "\t"));
+
+const filesToUpdate = ['manifest.json', 'versions.json'];
 
 const showChanges = async () => {
-    console.log('The following changes will be committed:');
-    await git.status().then(status => {
-        console.log(status.modified);
-    });
-}
+    const status = await git.status();
+    console.log('Changes to be committed:');
+    console.log(status.files.map(file => `  ${file.path}`).join('\n'));
+};
 
 const commitAndTag = async () => {
     await showChanges();
@@ -62,7 +46,7 @@ const commitAndTag = async () => {
         process.exit(1);
     }
 
-    const commitMessage = `New version release ${newVersion}`;
+    const commitMessage = `New version release ${targetVersion}`;
 
     try {
         await git.add(filesToUpdate);
@@ -80,13 +64,19 @@ const commitAndTag = async () => {
     }
 
     try {
-        await git.tag(['-a', newVersion, '-m', newVersion]);
+        await git.tag(['-a', targetVersion, '-m', targetVersion]);
         await git.pushTags('origin');
-        console.log(`Successfully tagged and pushed version ${newVersion}`);
+        console.log(`Successfully tagged and pushed version ${targetVersion}`);
     } catch (err) {
         console.error('Failed to execute git tag commands', err);
         process.exit(1);
     }
 }
 
-commitAndTag();
+commitAndTag().then(() => {
+    rl.close();
+}).catch((err) => {
+    console.error('An error occurred:', err);
+    rl.close();
+    process.exit(1);
+});
