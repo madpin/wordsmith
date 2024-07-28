@@ -92,7 +92,7 @@ const commitAndTag = async () => {
     try {
         await git.add(filesToUpdate);
         await git.commit(commitMessage);
-        await git.push('origin', 'master');
+        await git.push('origin', 'main');
         console.log('Successfully committed and pushed changes.');
     } catch (error) {
         console.error('Failed to execute git commit commands:', error);
