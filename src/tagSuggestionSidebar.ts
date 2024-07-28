@@ -44,12 +44,14 @@ export class TagSuggestionSidebar {
         const content = await this.app.vault.read(file);
         // Get existing tags for the file
         const existingTags = getExistingTags(this.app, file);
-        // Suggest new tags based on the content
-        const suggestedTags = await suggestTags(this.plugin, content);
-        // Suggest new names based on the content
-        const names = await suggestNames(this.plugin, content);
+
+        // Suggest new tags and names based on the content in parallel
+        const [suggestedTags, suggestedNames] = await Promise.all([
+            suggestTags(this.plugin, content),
+            suggestNames(this.plugin, content)
+        ]);
         // Update the view with the new suggestions
-        this.updateView(suggestedTags, new Set(existingTags), names);
+        this.updateView(suggestedTags, new Set(existingTags), suggestedNames);
 
         // Speaker Identification
         const speakerIdentifier = new SpeakerIdentifier(this.app, this.plugin.settings);
@@ -67,11 +69,11 @@ export class TagSuggestionSidebar {
      */
     private async updateView(tags: string[], existingTags: Set<string>, names: string[]) {
         if (this.leaf && this.leaf.view instanceof TagSuggestionView) {
-            await this.leaf.view.updateTags(tags, existingTags);
+            this.leaf.view.updateTags(tags, existingTags);
             this.leaf.view.updateNames(names);
 
             // Force a re-render of the view
-            this.leaf.view.renderView();
+            await this.leaf.view.renderView();
         }
     }
 

@@ -25,7 +25,7 @@ If your plugin does not need CSS, delete this file.
     margin-bottom: 15px;
     padding: 8px;
     background-color: var(--interactive-accent);
-    color: var(--text-on-accent);
+    color: var(--text-normal);
     border: none;
     border-radius: 4px;
     cursor: pointer;

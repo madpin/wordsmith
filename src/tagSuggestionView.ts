@@ -61,9 +61,21 @@ export class TagSuggestionView extends ItemView {
 
     private renderCurrentFileName(container: HTMLElement) {
         if (this.currentFileName) {
-            const fileNameEl = container.createEl('div', { cls: 'current-file-name', text: `Generation file: ${this.currentFileName}` });
+            const fileNameEl = container.createEl('div', { cls: 'current-file-name' });
             fileNameEl.style.fontWeight = 'bold';
             fileNameEl.style.marginBottom = '10px';
+
+            fileNameEl.appendChild(document.createTextNode('Generation file: '));
+
+            const linkEl = fileNameEl.createEl('a', { text: this.currentFileName });
+            linkEl.style.cursor = 'pointer';
+
+            linkEl.addEventListener('click', () => {
+
+                if (this.currentFileName) {
+                    this.app.workspace.openLinkText(this.currentFileName, '', false);
+                }
+            });
         }
     }
 
@@ -268,13 +280,13 @@ export class TagSuggestionView extends ItemView {
         nameEl.addEventListener('click', () => this.sidebar.renameCurrentFile(name));
     }
 
-    updateTags(tags: string[], existingTags: Set<string>) {
+    async updateTags(tags: string[], existingTags: Set<string>) {
         this.allTags = tags;
         this.existingTags = existingTags;
         this.renderView();
     }
 
-    updateNames(names: string[]) {
+    async updateNames(names: string[]) {
         this.allNames = names;
         this.renderView();
     }
