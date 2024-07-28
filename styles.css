@@ -1,0 +1,174 @@
+/*
+
+This CSS file will be included with your plugin, and
+available in the app when your plugin is enabled.
+
+If your plugin does not need CSS, delete this file.
+
+*/
+
+.tag-suggestion-view {
+    padding: 10px;
+}
+
+.suggestion-section {
+    margin-bottom: 20px;
+}
+
+.separator {
+    border-top: 1px solid var(--background-modifier-border);
+    margin: 15px 0;
+}
+
+.refresh-button {
+    width: 100%;
+    margin-bottom: 15px;
+    padding: 8px;
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.refresh-button:hover {
+    background-color: var(--interactive-accent-hover);
+}
+
+.drop-zone {
+    border: 2px dashed var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 10px;
+    transition: background-color 0.3s;
+}
+
+.drop-zone.dragover {
+    background-color: var(--background-modifier-hover);
+}
+
+.upload-button {
+    width: calc(70% - 5px);
+    padding: 8px;
+    background-color: var(--interactive-normal);
+    color: var(--text-normal);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+
+.upload-button:hover {
+    background-color: var(--interactive-hover);
+}
+
+.identify-speakers-button {
+    width: calc(30% - 5px);
+    padding: 8px;
+    background-color: var(--interactive-normal);
+    color: var(--text-normal);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.9em;
+}
+
+.identify-speakers-button:hover {
+    background-color: var(--interactive-hover);
+}
+
+.tags-container,
+.names-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.tag-item,
+.name-item {
+    background-color: var(--background-modifier-hover);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.tag-item:hover,
+.name-item:hover {
+    background-color: var(--background-modifier-active);
+}
+
+.tick-mark {
+    margin-left: 5px;
+    color: var(--text-accent);
+}
+
+.error-message {
+    color: var(--text-error);
+    margin-top: 10px;
+}
+
+.audio-status-section {
+    margin-top: 15px;
+}
+
+.transcription-link {
+    margin-top: 10px;
+}
+
+.transcription-link a {
+    color: var(--text-accent);
+    text-decoration: none;
+}
+
+.transcription-link a:hover {
+    text-decoration: underline;
+}
+
+.suggestions-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 5px;
+}
+
+.suggestion-link {
+    cursor: pointer;
+    color: var(--text-accent);
+    text-decoration: none;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background-color: var(--background-secondary);
+    display: inline-block;
+    margin-bottom: 5px;
+}
+
+.suggestion-link:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+@media (max-width: 600px) {
+    .suggestions-table tr {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .suggestions-table td {
+        flex: 0 0 100%;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 900px) {
+    .suggestions-table tr {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .suggestions-table td {
+        flex: 0 0 50%;
+    }
+}
