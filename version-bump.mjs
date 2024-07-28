@@ -75,27 +75,10 @@ const commitChanges = async () => {
     }
 };
 
-const tagCommit = async () => {
-    const tagConfirmation = await askQuestion('Do you want to tag this commit?');
-    if (tagConfirmation !== 'yes') {
-        console.log('Skipping tag creation.');
-        return;
-    }
-
-    try {
-        await git.addTag(targetVersion);
-        console.log(`Successfully created tag ${targetVersion}`);
-    } catch (error) {
-        console.error('Failed to create git tag:', error);
-        process.exit(1);
-    }
-};
-
 const main = async () => {
     try {
         updateVersionFiles();
         await commitChanges();
-        await tagCommit();
     } catch (error) {
         console.error('An error occurred:', error);
         process.exit(1);
