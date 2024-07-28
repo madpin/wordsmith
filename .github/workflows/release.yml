@@ -29,7 +29,7 @@ jobs:
             ${{ runner.os }}-node_modules-
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build plugin
         run: npm run build
@@ -44,15 +44,9 @@ jobs:
             exit 1
           fi
 
-          echo "Creating release for tag: $tag"
-          if ! gh release create "$tag" \
+          gh release create "$tag" \
             --title="$tag" \
-            main.js manifest.json styles.css; then
-            echo "Failed to create release. Logs:"
-            gh release view "$tag" --json url,assets
-          else
-            echo "Release created successfully"
-          fi
+            main.js manifest.json styles.css settings-tab.ts
       
       - name: Upload error logs
         if: failure()
