@@ -2,6 +2,53 @@
 
 Wordsmith is an AI-powered plugin for Obsidian that enhances your note-taking experience with intelligent suggestions and advanced features.
 
+## Project Structure
+
+Here's a visual representation of our project structure:
+
+
+```mermaid
+graph TD
+    A[main.ts] --> B[aiSuggestions.ts]
+    A --> C[fileOperations.ts]
+    A --> D[settings.ts]
+    A --> E[settingsTab.ts]
+    A --> F[speaker.ts]
+    A --> G[tagSuggestionSidebar.ts]
+    A --> H[tagSuggestionView.ts]
+    A --> I[tagUtils.ts]
+    A --> J[transcriptionService.ts]
+
+    B --> B1[suggestTags]
+    B --> B2[suggestNames]
+
+    C --> C1[addTagToCurrentFile]
+    C --> C2[removeTagFromCurrentFile]
+    C --> C3[renameCurrentFile]
+
+    D --> D1[PluginSettings]
+    D --> D2[DEFAULT_SETTINGS]
+
+    E --> E1[SettingsTab]
+
+    F --> F1[SpeakerPopup]
+    F --> F2[SpeakerIdentifier]
+
+    G --> G1[TagSuggestionSidebar]
+
+    H --> H1[TagSuggestionView]
+
+    I --> I1[formatTag]
+    I --> I2[getExistingTags]
+    I --> I3[updateFrontMatter]
+
+    J --> J1[transcribeAudio]
+    J --> J2[transcribeWithDeepgram]
+    J --> J3[saveTranscription]
+    J --> J4[saveTranscriptionWithUniqueFilename]
+```
+
+
 ## Features
 
 - AI-powered tag suggestions
@@ -10,6 +57,8 @@ Wordsmith is an AI-powered plugin for Obsidian that enhances your note-taking ex
 - Integration with OpenAI for content analysis
 - Secure file storage using Oracle Cloud Infrastructure (OCI)
 - Customizable settings for API keys and model parameters
+
+![Watch the demo video](demo1.mov)
 
 ## Installation
 
