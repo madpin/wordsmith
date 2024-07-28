@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { createInterface } from "readline";
-import simpleGit from "simple-git";
+import { simpleGit } from "simple-git";
 
 const git = simpleGit();
 
