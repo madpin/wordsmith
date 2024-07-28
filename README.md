@@ -58,7 +58,7 @@ graph TD
 - Secure file storage using Oracle Cloud Infrastructure (OCI)
 - Customizable settings for API keys and model parameters
 
-![Watch the demo video](demo1.mov)
+![Watch the demo video](demo1.mp4)
 
 ## Installation
 
