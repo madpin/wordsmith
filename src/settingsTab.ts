@@ -16,6 +16,7 @@ export class SettingsTab extends PluginSettingTab {
 
         this.createOpenAISection(containerEl);
         this.createModelSection(containerEl);
+        this.showCustomModelSetting(containerEl);
         this.createGenerationSection(containerEl);
         // this.createDeepgramSection(containerEl);
         this.createTranscriptionSection(containerEl);
@@ -55,28 +56,41 @@ export class SettingsTab extends PluginSettingTab {
         new Setting(containerEl)
             .setName("Model")
             .setDesc("Choose the OpenAI model to use or enter a custom model name")
-            .addDropdown(dropdown => dropdown
-                .addOption("gpt-4o-mini", "GPT-4o Mini")
-                .addOption("gpt-4o", "GPT-4o")
-                .addOption("custom", "Custom")
-                .setValue(this.plugin.settings.model)
-                .onChange(async (value) => {
-                    if (value === "custom") {
-                        new Setting(containerEl)
-                            .setName("Custom model")
-                            .setDesc("Enter the name of the custom OpenAI model")
-                            .addText(text => text
-                                .setPlaceholder("Enter custom model name")
-                                .setValue(this.plugin.settings.customModel || "")
-                                .onChange(async (customValue) => {
-                                    this.plugin.settings.customModel = customValue;
-                                    this.plugin.settings.model = customValue;
-                                    await this.plugin.saveSettings();
-                                }));
-                    } else {
-                        this.plugin.settings.model = value;
-                        await this.plugin.saveSettings();
-                    }
+            .addDropdown(dropdown => {
+                dropdown.addOption("gpt-4o-mini", "GPT-4o Mini")
+                    .addOption("gpt-4o", "GPT-4o")
+                    .addOption("custom", "Custom");
+                
+                if (this.plugin.settings.customModel) {
+                    dropdown.addOption(this.plugin.settings.customModel, this.plugin.settings.customModel);
+                }
+                
+                dropdown.setValue(this.plugin.settings.model)
+                    .onChange(async (value) => {
+                        if (value !== "custom") {
+                        //     this.showCustomModelSetting(containerEl);
+                        // } else {
+                            this.plugin.settings.model = value;
+                            await this.plugin.saveSettings();
+                        }
+                    });
+                return dropdown;
+            });
+
+        // this.showCustomModelSetting(containerEl);
+    }
+
+    showCustomModelSetting(containerEl: HTMLElement): void {
+        new Setting(containerEl)
+            .setName("Custom model")
+            .setDesc("Enter the name of the custom OpenAI model")
+            .addText(text => text
+                .setPlaceholder("Enter custom model name")
+                .setValue(this.plugin.settings.customModel || "")
+                .onChange(async (customValue) => {
+                    this.plugin.settings.customModel = customValue;
+                    this.plugin.settings.model = customValue;
+                    await this.plugin.saveSettings();
                 }));
     }
 
