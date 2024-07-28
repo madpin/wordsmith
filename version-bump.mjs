@@ -11,11 +11,14 @@ const rl = readline.createInterface({
 /**
  * Prompts the user with a question and returns the answer.
  * @param {string} question - The question to ask.
+ * @param {string} defaultAnswer - The default answer if user just presses Enter.
  * @returns {Promise<string>} A promise that resolves with the user's answer.
  */
-const askQuestion = (question) => {
+const askQuestion = (question, defaultAnswer = 'yes') => {
     return new Promise((resolve) => {
-        rl.question(question, resolve);
+        rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
+            resolve(answer.trim().toLowerCase() || defaultAnswer);
+        });
     });
 };
 
@@ -76,41 +79,25 @@ const showChanges = async () => {
 };
 
 /**
- * Commits changes and creates a new tag.
+ * Commits changes without creating a new tag.
  */
-const commitAndTag = async () => {
+const commitChanges = async () => {
     await showChanges();
 
-    const commitConfirmation = await askQuestion('Do you want to commit these changes? (yes/no) ');
-    if (commitConfirmation.toLowerCase() !== 'yes') {
+    const commitConfirmation = await askQuestion('Do you want to commit these changes?');
+    if (commitConfirmation !== 'yes') {
         console.log('Aborting commit.');
         process.exit(0);
     }
 
-    const commitMessage = `New version release ${targetVersion}`;
+    const commitMessage = `Update version files to ${targetVersion}`;
 
     try {
         await git.add(filesToUpdate);
         await git.commit(commitMessage);
-        await git.push('origin', 'main');
-        console.log('Successfully committed and pushed changes.');
+        console.log('Successfully committed changes.');
     } catch (error) {
         console.error('Failed to execute git commit commands:', error);
-        process.exit(1);
-    }
-
-    const tagConfirmation = await askQuestion('Do you want to tag this commit? (yes/no) ');
-    if (tagConfirmation.toLowerCase() !== 'yes') {
-        console.log('Aborting tag.');
-        process.exit(0);
-    }
-
-    try {
-        await git.addTag(targetVersion);
-        await git.pushTags('origin');
-        console.log(`Successfully tagged and pushed version ${targetVersion}`);
-    } catch (error) {
-        console.error('Failed to execute git tag commands:', error);
         process.exit(1);
     }
 };
@@ -121,7 +108,7 @@ const commitAndTag = async () => {
 const main = async () => {
     try {
         updateVersionFiles();
-        await commitAndTag();
+        await commitChanges();
     } catch (error) {
         console.error('An error occurred:', error);
         process.exit(1);
