@@ -161,11 +161,12 @@ const main = async () => {
 
         const currentVersion = packageJson.version;
         console.log(`Current version: ${currentVersion}`);
-
-        const versionIncrement = await askQuestion('Enter version increment (patch/minor/major)', 'patch');
-
+        
+        // Always perform a patch version increment
+        const versionIncrement = 'patch';
+        
         execSync(`npm version ${versionIncrement} --no-git-tag-version`);
-
+        
         const updatedPackageJson = readJsonFile('package.json');
         if (!updatedPackageJson) throw new Error('Failed to read updated package.json');
 
