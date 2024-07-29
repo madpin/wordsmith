@@ -166,7 +166,7 @@ const main = async () => {
         const versionIncrement = 'patch';
         
         execSync(`npm version ${versionIncrement} --no-git-tag-version`);
-        
+
         const updatedPackageJson = readJsonFile('package.json');
         if (!updatedPackageJson) throw new Error('Failed to read updated package.json');
 
