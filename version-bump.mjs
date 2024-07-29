@@ -8,9 +8,9 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
-
 const handleInterrupt = () => {
     console.log('\nOperation cancelled by user.');
+    rl.close();
     process.exit(0);
 };
 
@@ -18,7 +18,14 @@ process.on('SIGINT', handleInterrupt);
 
 const askQuestion = (question, defaultAnswer = 'yes') => {
     return new Promise((resolve) => {
+        const listener = () => {
+            rl.removeListener('SIGINT', listener);
+            handleInterrupt();
+        };
+        rl.on('SIGINT', listener);
+
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
+            rl.removeListener('SIGINT', listener);
             const normalizedAnswer = answer.trim().toLowerCase();
             if (normalizedAnswer === '' || normalizedAnswer === 'yes' || normalizedAnswer === 'no') {
                 resolve(normalizedAnswer === '' ? defaultAnswer : normalizedAnswer);
@@ -28,6 +35,7 @@ const askQuestion = (question, defaultAnswer = 'yes') => {
         });
     });
 };
+
 
 const readJsonFile = (filename) => {
     try {
@@ -142,9 +150,12 @@ const cleanup = async () => {
     } catch (error) {
         console.error('Failed to revert changes:', error);
     } finally {
-        rl.close();
+        if (rl.listenerCount('line') > 0) {
+            rl.close();
+        }
     }
 };
+
 
 const main = async () => {
     const targetVersion = process.env.npm_package_version;
