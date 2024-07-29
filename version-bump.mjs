@@ -6,17 +6,15 @@ import fetch from 'node-fetch';
 const git = simpleGit();
 const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
 });
 
 // Handling SIGINT
-const handleInterrupt = () => {
+process.on('SIGINT', () => {
     console.log('\nOperation cancelled by user.');
     rl.close();
     process.exit(0);
-};
-
-process.on('SIGINT', handleInterrupt);
+});
 
 // Custom method to ask questions and handle SIGINT properly
 const askQuestion = (question, defaultAnswer = 'yes') => {
