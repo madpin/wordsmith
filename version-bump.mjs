@@ -1,36 +1,38 @@
+import { execSync } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import simpleGit from 'simple-git';
 import readline from 'readline';
 import fetch from 'node-fetch';
 
 const git = simpleGit();
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-});
+let rl;
 
-// Handling SIGINT
+function createReadlineInterface() {
+    rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+}
+
+function closeReadlineInterface() {
+    if (rl) {
+        rl.close();
+        rl = null;
+    }
+}
+
 process.on('SIGINT', () => {
     console.log('\nOperation cancelled by user.');
-    rl.close();
-    process.exit(0);
+    closeReadlineInterface();
+    process.exit(1);
 });
 
-// Custom method to ask questions and handle SIGINT properly
-const askQuestion = (question, defaultAnswer = 'yes') => {
-    return new Promise((resolve, reject) => {
-        rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
-            const normalizedAnswer = answer.trim().toLowerCase();
-            if (normalizedAnswer === '' || normalizedAnswer === 'yes' || normalizedAnswer === 'no') {
-                resolve(normalizedAnswer === '' ? defaultAnswer : normalizedAnswer);
-            } else {
-                resolve('no');
-            }
-        });
-
-        process.once('SIGINT', () => {
-            rl.close();
-            reject(new Error('User interruption'));
+const askQuestion = (question, defaultAnswer = '') => {
+    return new Promise((resolve) => {
+        createReadlineInterface();
+        rl.question(`${question}${defaultAnswer ? ` [${defaultAnswer}]` : ''}: `, (answer) => {
+            closeReadlineInterface();
+            resolve(answer.trim() || defaultAnswer);
         });
     });
 };
@@ -46,7 +48,7 @@ const readJsonFile = (filename) => {
 
 const writeJsonFile = (filename, data) => {
     try {
-        writeFileSync(filename, JSON.stringify(data, null, '\t'));
+        writeFileSync(filename, JSON.stringify(data, null, 2));
         return true;
     } catch (error) {
         console.error(`Error writing ${filename}:`, error);
@@ -54,18 +56,18 @@ const writeJsonFile = (filename, data) => {
     }
 };
 
-const updateVersionFiles = (targetVersion) => {
+const updateVersionFiles = (newVersion) => {
     const manifest = readJsonFile('manifest.json');
     if (!manifest) return false;
 
     const { minAppVersion } = manifest;
-    manifest.version = targetVersion;
+    manifest.version = newVersion;
     if (!writeJsonFile('manifest.json', manifest)) return false;
 
     const versions = readJsonFile('versions.json');
     if (!versions) return false;
 
-    versions[targetVersion] = minAppVersion;
+    versions[newVersion] = minAppVersion;
     return writeJsonFile('versions.json', versions);
 };
 
@@ -75,21 +77,16 @@ const showChanges = async () => {
     console.log(status.files.map(file => `  ${file.path}`).join('\n'));
 };
 
-const commitChanges = async (targetVersion, filesToUpdate) => {
+const commitChanges = async (newVersion, filesToUpdate) => {
     await showChanges();
 
-    try {
-        const commitConfirmation = await askQuestion('Do you want to commit these changes?', 'yes');
-        if (commitConfirmation !== 'yes') {
-            console.log('Aborting commit.');
-            return false;
-        }
-    } catch (error) {
-        console.log('Aborting due to interrupt');
+    const commitConfirmation = await askQuestion('Do you want to commit these changes?', 'yes');
+    if (commitConfirmation.toLowerCase() !== 'yes') {
+        console.log('Aborting commit.');
         return false;
     }
 
-    const commitMessage = `Update version files to ${targetVersion}`;
+    const commitMessage = `Update version to ${newVersion}`;
 
     try {
         await git.add(filesToUpdate);
@@ -102,7 +99,7 @@ const commitChanges = async (targetVersion, filesToUpdate) => {
     }
 };
 
-const createGitHubRelease = async (targetVersion) => {
+const createGitHubRelease = async (newVersion) => {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
         console.error('GITHUB_TOKEN environment variable is not set. Skipping GitHub release creation.');
@@ -113,9 +110,9 @@ const createGitHubRelease = async (targetVersion) => {
     const [, owner, repo] = repoUrl.match(/github\.com[:/](.+)\/(.+)\.git$/);
 
     const releaseData = {
-        tag_name: targetVersion,
-        name: `Release ${targetVersion}`,
-        body: `Release of version ${targetVersion}`,
+        tag_name: newVersion,
+        name: `Release ${newVersion}`,
+        body: `Release of version ${newVersion}`,
         draft: false,
         prerelease: false
     };
@@ -134,7 +131,7 @@ const createGitHubRelease = async (targetVersion) => {
             throw new Error(`GitHub API responded with ${response.status}: ${response.statusText}`);
         }
 
-        console.log(`Successfully created GitHub release for ${targetVersion}`);
+        console.log(`Successfully created GitHub release for ${newVersion}`);
         return true;
     } catch (error) {
         console.error('Failed to create GitHub release:', error);
@@ -153,35 +150,60 @@ const cleanup = async () => {
     } catch (error) {
         console.error('Failed to revert changes:', error);
     } finally {
-        if (rl.listenerCount('line') > 0) {
-            rl.close();
-        }
+        closeReadlineInterface();
     }
 };
 
 const main = async () => {
-    const targetVersion = process.env.npm_package_version;
-    const filesToUpdate = ['manifest.json', 'versions.json'];
-
     try {
-        if (!updateVersionFiles(targetVersion)) {
+        const packageJson = readJsonFile('package.json');
+        if (!packageJson) throw new Error('Failed to read package.json');
+
+        const currentVersion = packageJson.version;
+        console.log(`Current version: ${currentVersion}`);
+
+        const versionIncrement = await askQuestion('Enter version increment (patch/minor/major)', 'patch');
+
+        execSync(`npm version ${versionIncrement} --no-git-tag-version`);
+
+        const updatedPackageJson = readJsonFile('package.json');
+        if (!updatedPackageJson) throw new Error('Failed to read updated package.json');
+
+        const newVersion = updatedPackageJson.version;
+        console.log(`New version: ${newVersion}`);
+
+        if (!updateVersionFiles(newVersion)) {
             throw new Error('Failed to update version files');
         }
 
-        if (!await commitChanges(targetVersion, filesToUpdate)) {
+        const filesToUpdate = ['package.json', 'manifest.json', 'versions.json'];
+        if (!await commitChanges(newVersion, filesToUpdate)) {
             throw new Error('Failed to commit changes');
         }
 
-        if (!await createGitHubRelease(targetVersion)) {
-            throw new Error('Failed to create GitHub release');
+        await git.addTag(newVersion);
+
+        const pushConfirmation = await askQuestion('Do you want to push changes and tags?', 'yes');
+        if (pushConfirmation.toLowerCase() === 'yes') {
+            console.log('Pushing changes and tags...');
+            await git.push();
+            await git.pushTags();
+            console.log('Successfully pushed changes and tags.');
+
+            if (!await createGitHubRelease(newVersion)) {
+                throw new Error('Failed to create GitHub release');
+            }
+        } else {
+            console.log('Changes and tags were not pushed.');
         }
 
-        console.log('Script completed successfully.');
+        console.log('Version bump process completed successfully.');
     } catch (error) {
         console.error('An error occurred:', error);
         await cleanup();
+        process.exit(1);
     } finally {
-        rl.close();
+        closeReadlineInterface();
     }
 };
 
