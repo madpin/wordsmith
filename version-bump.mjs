@@ -9,6 +9,25 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+const handleInterrupt = async () => {
+    console.log('\nOperation cancelled by user.');
+    try {
+        const status = await git.status();
+        if (status.files.length > 0) {
+            console.log('Reverting changes...');
+            await git.reset(['--hard']);
+            console.log('Changes reverted successfully.');
+        }
+    } catch (error) {
+        console.error('Failed to revert changes:', error);
+    } finally {
+        rl.close();
+        process.exit(0);
+    }
+};
+
+process.on('SIGINT', handleInterrupt);
+
 const askQuestion = (question, defaultAnswer = 'yes') => {
     return new Promise((resolve, reject) => {
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
@@ -28,7 +47,7 @@ const readJsonFile = (filename) => {
         return JSON.parse(readFileSync(filename, 'utf8'));
     } catch (error) {
         console.error(`Error reading ${filename}:`, error);
-        process.exit(1);
+        handleInterrupt();
     }
 };
 
@@ -37,7 +56,7 @@ const writeJsonFile = (filename, data) => {
         writeFileSync(filename, JSON.stringify(data, null, '\t'));
     } catch (error) {
         console.error(`Error writing ${filename}:`, error);
-        process.exit(1);
+        handleInterrupt();
     }
 };
 
@@ -68,7 +87,7 @@ const commitChanges = async () => {
         const commitConfirmation = await askQuestion('Do you want to commit these changes?');
         if (commitConfirmation !== 'yes') {
             console.log('Aborting commit.');
-            process.exit(0);
+            handleInterrupt();
         }
 
         const commitMessage = `Update version files to ${targetVersion}`;
@@ -79,10 +98,10 @@ const commitChanges = async () => {
     } catch (error) {
         if (error.message === 'Aborted by user') {
             console.log('Aborting script.');
-            process.exit(0);
+            handleInterrupt();
         }
         console.error('Failed to execute git commit commands:', error);
-        process.exit(1);
+        handleInterrupt();
     }
 };
 
@@ -121,6 +140,7 @@ const createGitHubRelease = async () => {
         console.log(`Successfully created GitHub release for ${targetVersion}`);
     } catch (error) {
         console.error('Failed to create GitHub release:', error);
+        handleInterrupt();
     }
 };
 
@@ -131,7 +151,7 @@ const main = async () => {
         await createGitHubRelease();
     } catch (error) {
         console.error('An error occurred:', error);
-        process.exit(1);
+        handleInterrupt();
     } finally {
         rl.close();
     }
