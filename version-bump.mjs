@@ -161,10 +161,11 @@ const main = async () => {
 
         const currentVersion = packageJson.version;
         console.log(`Current version: ${currentVersion}`);
-        
+
         // Always perform a patch version increment
         const versionIncrement = 'patch';
-        
+
+        // Perform version increment without committing the changes
         execSync(`npm version ${versionIncrement} --no-git-tag-version`);
 
         const updatedPackageJson = readJsonFile('package.json');
