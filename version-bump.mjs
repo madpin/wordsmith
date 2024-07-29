@@ -10,9 +10,15 @@ const rl = readline.createInterface({
 });
 
 const askQuestion = (question, defaultAnswer = 'yes') => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
-            resolve(answer.trim().toLowerCase() || defaultAnswer);
+            if (answer.trim().toLowerCase() === '') {
+                resolve(defaultAnswer);
+            } else if (answer.trim().toLowerCase() === 'yes' || answer.trim().toLowerCase() === 'no') {
+                resolve(answer.trim().toLowerCase());
+            } else {
+                reject(new Error('Aborted by user'));
+            }
         });
     });
 };
@@ -58,19 +64,23 @@ const showChanges = async () => {
 const commitChanges = async () => {
     await showChanges();
 
-    const commitConfirmation = await askQuestion('Do you want to commit these changes?');
-    if (commitConfirmation !== 'yes') {
-        console.log('Aborting commit.');
-        process.exit(0);
-    }
-
-    const commitMessage = `Update version files to ${targetVersion}`;
-
     try {
+        const commitConfirmation = await askQuestion('Do you want to commit these changes?');
+        if (commitConfirmation !== 'yes') {
+            console.log('Aborting commit.');
+            process.exit(0);
+        }
+
+        const commitMessage = `Update version files to ${targetVersion}`;
+
         await git.add(filesToUpdate);
         await git.commit(commitMessage);
         console.log('Successfully committed changes.');
     } catch (error) {
+        if (error.message === 'Aborted by user') {
+            console.log('Aborting script.');
+            process.exit(0);
+        }
         console.error('Failed to execute git commit commands:', error);
         process.exit(1);
     }
