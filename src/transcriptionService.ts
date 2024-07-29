@@ -92,26 +92,14 @@ async function transcribeWithDeepgram(audioUrl: string, apiKey: string, statusCa
 
     const data: TranscriptionResponse = await response.json();
     try {
-        // Verifica se há alternativas disponíveis
-        if (data.results?.channels[0]?.alternatives?.length > 0) {
-            const alternative = data.results.channels[0].alternatives[0];
-
-            // Verifica se há uma propriedade 'transcript' diretamente em 'alternative'
-            if ('transcript' in alternative) {
-                return String(alternative.transcript);
-            }
-
-            // Se não houver 'transcript' direto, procura em uma possível propriedade 'paragraphs'
-            // Note que isso é uma verificação extra, caso a API mude no futuro
-            if (typeof alternative === 'object' && alternative !== null && 'paragraphs' in alternative) {
-                const paragraphs = (alternative as any).paragraphs;
-                if (typeof paragraphs === 'object' && paragraphs !== null && 'transcript' in paragraphs) {
-                    return String(paragraphs.transcript);
-                }
-            }
+        // Check for the Python-style structure first
+        if (data.results?.channels[0]?.alternatives[0]?.paragraphs?.transcript) {
+            return String(data.results.channels[0].alternatives[0].paragraphs.transcript);
         }
-
-        // Se nenhuma das condições acima for atendida, retorna uma string vazia
+        if (data.results?.channels[0]?.alternatives[0]?.transcript) {
+            return String(data.results.channels[0].alternatives[0].transcript);
+        }
+        
         statusCallback("No transcript found in the response");
         return "";
     } catch (error) {
