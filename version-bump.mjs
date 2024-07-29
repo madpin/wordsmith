@@ -8,6 +8,8 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 });
+
+// Handling SIGINT
 const handleInterrupt = () => {
     console.log('\nOperation cancelled by user.');
     rl.close();
@@ -16,10 +18,9 @@ const handleInterrupt = () => {
 
 process.on('SIGINT', handleInterrupt);
 
-// Adding a custom method to ask questions and handle SIGINT properly
+// Custom method to ask questions and handle SIGINT properly
 const askQuestion = (question, defaultAnswer = 'yes') => {
     return new Promise((resolve, reject) => {
-
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
             const normalizedAnswer = answer.trim().toLowerCase();
             if (normalizedAnswer === '' || normalizedAnswer === 'yes' || normalizedAnswer === 'no') {
@@ -80,7 +81,7 @@ const commitChanges = async (targetVersion, filesToUpdate) => {
     await showChanges();
 
     try {
-        const commitConfirmation = await askQuestion('Do you want to commit these changes?');
+        const commitConfirmation = await askQuestion('Do you want to commit these changes?', 'yes');
         if (commitConfirmation !== 'yes') {
             console.log('Aborting commit.');
             return false;
