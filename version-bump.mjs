@@ -9,34 +9,21 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
-const handleInterrupt = async () => {
+const handleInterrupt = () => {
     console.log('\nOperation cancelled by user.');
-    try {
-        const status = await git.status();
-        if (status.files.length > 0) {
-            console.log('Reverting changes...');
-            await git.reset(['--hard']);
-            console.log('Changes reverted successfully.');
-        }
-    } catch (error) {
-        console.error('Failed to revert changes:', error);
-    } finally {
-        rl.close();
-        process.exit(0);
-    }
+    process.exit(0);
 };
 
 process.on('SIGINT', handleInterrupt);
 
 const askQuestion = (question, defaultAnswer = 'yes') => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
-            if (answer.trim().toLowerCase() === '') {
-                resolve(defaultAnswer);
-            } else if (answer.trim().toLowerCase() === 'yes' || answer.trim().toLowerCase() === 'no') {
-                resolve(answer.trim().toLowerCase());
+            const normalizedAnswer = answer.trim().toLowerCase();
+            if (normalizedAnswer === '' || normalizedAnswer === 'yes' || normalizedAnswer === 'no') {
+                resolve(normalizedAnswer === '' ? defaultAnswer : normalizedAnswer);
             } else {
-                reject(new Error('Aborted by user'));
+                resolve('no');
             }
         });
     });
@@ -47,31 +34,33 @@ const readJsonFile = (filename) => {
         return JSON.parse(readFileSync(filename, 'utf8'));
     } catch (error) {
         console.error(`Error reading ${filename}:`, error);
-        handleInterrupt();
+        return null;
     }
 };
 
 const writeJsonFile = (filename, data) => {
     try {
         writeFileSync(filename, JSON.stringify(data, null, '\t'));
+        return true;
     } catch (error) {
         console.error(`Error writing ${filename}:`, error);
-        handleInterrupt();
+        return false;
     }
 };
 
-const targetVersion = process.env.npm_package_version;
-const filesToUpdate = ['manifest.json', 'versions.json'];
-
-const updateVersionFiles = () => {
+const updateVersionFiles = (targetVersion) => {
     const manifest = readJsonFile('manifest.json');
+    if (!manifest) return false;
+
     const { minAppVersion } = manifest;
     manifest.version = targetVersion;
-    writeJsonFile('manifest.json', manifest);
+    if (!writeJsonFile('manifest.json', manifest)) return false;
 
     const versions = readJsonFile('versions.json');
+    if (!versions) return false;
+
     versions[targetVersion] = minAppVersion;
-    writeJsonFile('versions.json', versions);
+    return writeJsonFile('versions.json', versions);
 };
 
 const showChanges = async () => {
@@ -80,36 +69,33 @@ const showChanges = async () => {
     console.log(status.files.map(file => `  ${file.path}`).join('\n'));
 };
 
-const commitChanges = async () => {
+const commitChanges = async (targetVersion, filesToUpdate) => {
     await showChanges();
 
+    const commitConfirmation = await askQuestion('Do you want to commit these changes?');
+    if (commitConfirmation !== 'yes') {
+        console.log('Aborting commit.');
+        return false;
+    }
+
+    const commitMessage = `Update version files to ${targetVersion}`;
+
     try {
-        const commitConfirmation = await askQuestion('Do you want to commit these changes?');
-        if (commitConfirmation !== 'yes') {
-            console.log('Aborting commit.');
-            handleInterrupt();
-        }
-
-        const commitMessage = `Update version files to ${targetVersion}`;
-
         await git.add(filesToUpdate);
         await git.commit(commitMessage);
         console.log('Successfully committed changes.');
+        return true;
     } catch (error) {
-        if (error.message === 'Aborted by user') {
-            console.log('Aborting script.');
-            handleInterrupt();
-        }
         console.error('Failed to execute git commit commands:', error);
-        handleInterrupt();
+        return false;
     }
 };
 
-const createGitHubRelease = async () => {
+const createGitHubRelease = async (targetVersion) => {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
         console.error('GITHUB_TOKEN environment variable is not set. Skipping GitHub release creation.');
-        return;
+        return false;
     }
 
     const repoUrl = await git.remote(['get-url', 'origin']);
@@ -138,23 +124,56 @@ const createGitHubRelease = async () => {
         }
 
         console.log(`Successfully created GitHub release for ${targetVersion}`);
+        return true;
     } catch (error) {
         console.error('Failed to create GitHub release:', error);
-        handleInterrupt();
+        return false;
     }
 };
 
-const main = async () => {
+const cleanup = async () => {
     try {
-        updateVersionFiles();
-        await commitChanges();
-        await createGitHubRelease();
+        const status = await git.status();
+        if (status.files.length > 0) {
+            console.log('Reverting changes...');
+            await git.reset(['--hard']);
+            console.log('Changes reverted successfully.');
+        }
     } catch (error) {
-        console.error('An error occurred:', error);
-        handleInterrupt();
+        console.error('Failed to revert changes:', error);
     } finally {
         rl.close();
     }
 };
 
-main();
+const main = async () => {
+    const targetVersion = process.env.npm_package_version;
+    const filesToUpdate = ['manifest.json', 'versions.json'];
+
+    try {
+        if (!updateVersionFiles(targetVersion)) {
+            throw new Error('Failed to update version files');
+        }
+
+        if (!await commitChanges(targetVersion, filesToUpdate)) {
+            throw new Error('Failed to commit changes');
+        }
+
+        if (!await createGitHubRelease(targetVersion)) {
+            throw new Error('Failed to create GitHub release');
+        }
+
+        console.log('Script completed successfully.');
+    } catch (error) {
+        console.error('An error occurred:', error);
+        await cleanup();
+    } finally {
+        rl.close();
+    }
+};
+
+main().catch(async (error) => {
+    console.error('Unhandled error:', error);
+    await cleanup();
+    process.exit(1);
+});
