@@ -16,16 +16,11 @@ const handleInterrupt = () => {
 
 process.on('SIGINT', handleInterrupt);
 
+// Adding a custom method to ask questions and handle SIGINT properly
 const askQuestion = (question, defaultAnswer = 'yes') => {
-    return new Promise((resolve) => {
-        const listener = () => {
-            rl.removeListener('SIGINT', listener);
-            handleInterrupt();
-        };
-        rl.on('SIGINT', listener);
+    return new Promise((resolve, reject) => {
 
         rl.question(`${question} [${defaultAnswer}]: `, (answer) => {
-            rl.removeListener('SIGINT', listener);
             const normalizedAnswer = answer.trim().toLowerCase();
             if (normalizedAnswer === '' || normalizedAnswer === 'yes' || normalizedAnswer === 'no') {
                 resolve(normalizedAnswer === '' ? defaultAnswer : normalizedAnswer);
@@ -33,9 +28,13 @@ const askQuestion = (question, defaultAnswer = 'yes') => {
                 resolve('no');
             }
         });
+
+        process.once('SIGINT', () => {
+            rl.close();
+            reject(new Error('User interruption'));
+        });
     });
 };
-
 
 const readJsonFile = (filename) => {
     try {
@@ -80,9 +79,14 @@ const showChanges = async () => {
 const commitChanges = async (targetVersion, filesToUpdate) => {
     await showChanges();
 
-    const commitConfirmation = await askQuestion('Do you want to commit these changes?');
-    if (commitConfirmation !== 'yes') {
-        console.log('Aborting commit.');
+    try {
+        const commitConfirmation = await askQuestion('Do you want to commit these changes?');
+        if (commitConfirmation !== 'yes') {
+            console.log('Aborting commit.');
+            return false;
+        }
+    } catch (error) {
+        console.log('Aborting due to interrupt');
         return false;
     }
 
@@ -155,7 +159,6 @@ const cleanup = async () => {
         }
     }
 };
-
 
 const main = async () => {
     const targetVersion = process.env.npm_package_version;
