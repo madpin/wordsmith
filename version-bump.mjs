@@ -162,10 +162,17 @@ const main = async () => {
         const currentVersion = packageJson.version;
         console.log(`Current version: ${currentVersion}`);
 
+        // Ask the user if they want to update the version
+        const shouldUpdate = await askQuestion('Do you want to update the version?', 'no');
+
+        if (shouldUpdate.toLowerCase() !== 'yes') {
+            console.log('Version update cancelled.');
+            return;
+        }
+
         // Always perform a patch version increment
         const versionIncrement = 'patch';
 
-        // Perform version increment without committing the changes
         execSync(`npm version ${versionIncrement} --no-git-tag-version`);
 
         const updatedPackageJson = readJsonFile('package.json');
@@ -208,6 +215,7 @@ const main = async () => {
         closeReadlineInterface();
     }
 };
+
 
 main().catch(async (error) => {
     console.error('Unhandled error:', error);
